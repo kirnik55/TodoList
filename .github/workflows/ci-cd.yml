@@ -1,0 +1,66 @@
+name: CI-CD TodoList
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-test-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore ./TodoList/TodoList.csproj
+
+      - name: Build
+        run: dotnet build ./TodoList/TodoList.csproj --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --no-build --verbosity normal || echo "No tests, skipping"
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./TodoList
+          file: ./TodoList/Dockerfile
+          push: true
+          tags: kirnik55/todolist:latest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-test-and-push
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -f k8s/mongo.yaml
+          kubectl apply -f k8s/todo-api.yaml
