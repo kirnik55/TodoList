@@ -52,7 +52,7 @@ jobs:
 
       - name: Deploy to Kubernetes (minikube)
         env:
-          KUBECONFIG: 'C:\Users\Mario\.kube\config'  
+          KUBECONFIG: 'C:\kube\config'  
         run: |
           kubectl config current-context
           kubectl apply -f k8s/mongo.yaml
