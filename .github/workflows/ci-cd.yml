@@ -43,24 +43,18 @@ jobs:
           tags: kirnik55/todolist:latest
 
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: build-test-and-push
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: 'latest'
-
-      - name: Configure kubeconfig
+      - name: Deploy to Kubernetes (minikube)
+        env:
+          KUBECONFIG: 'C:\Users\Mario\.kube\config'  
         run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
-
-      - name: Deploy to Kubernetes
-        run: |
+          kubectl config current-context
           kubectl apply -f k8s/mongo.yaml
           kubectl apply -f k8s/todo-api.yaml
+          kubectl get pods -A
